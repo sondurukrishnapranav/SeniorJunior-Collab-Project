@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api'; // ✅ Import api
 import { useNavigate } from 'react-router-dom';
 
 const ForgotPassword = () => {
@@ -15,9 +15,9 @@ const ForgotPassword = () => {
     setMessage('');
     setError('');
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/forgot-password', { email });
+      // ✅ Use api instance
+      const response = await api.post('/auth/forgot-password', { email });
       setMessage(response.data.message);
-      // Navigate to the reset page, passing email in state
       navigate('/reset-password', { state: { email } });
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong');

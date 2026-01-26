@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api'; // ✅ Import api
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -18,7 +18,7 @@ const Register = () => {
   const [message, setMessage] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => { /* ... timer logic remains the same ... */ }, [isVerificationStep]);
+  useEffect(() => { /* ... timer logic remains same ... */ }, [isVerificationStep]);
   
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
   const handleFileChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.files[0] });
@@ -31,7 +31,6 @@ const Register = () => {
     if (formData.password !== formData.confirmPassword) {
       return setError('Passwords do not match');
     }
-    // ✅ VALIDATION: Frontend check for senior developer rule
     if (formData.userType === 'senior' && formData.projectsCompleted < 6) {
       return setError('Seniors must have completed at least 6 projects.');
     }
@@ -44,7 +43,8 @@ const Register = () => {
     Object.keys(formData).forEach(key => formDataObj.append(key, formData[key]));
 
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/register', formDataObj, {
+      // ✅ Use api instance
+      const response = await api.post('/auth/register', formDataObj, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setMessage(response.data.message);
@@ -55,16 +55,16 @@ const Register = () => {
     setLoading(false);
   };
   
-  const handleResendOTP = async () => { /* ... remains the same ... */ };
+  const handleResendOTP = async () => { /* ... logic ... */ };
 
   const handleVerifyOTP = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const response = await axios.post('http://localhost:5000/api/auth/verify-email', { email: formData.email, otp });
+      // ✅ Use api instance
+      const response = await api.post('/auth/verify-email', { email: formData.email, otp });
       localStorage.setItem('token', response.data.token);
-      // Force a reload to allow AuthContext to pick up the new user
       window.location.href = response.data.user.userType === 'junior' ? '/junior-dashboard' : '/senior-dashboard';
     } catch (err) {
       setError(err.response?.data?.message || 'Verification failed');
@@ -83,15 +83,13 @@ const Register = () => {
                   <div className="text-center mb-4"><h2 className="fw-bold">Create Account</h2><p className="text-muted">Join our community of developers</p></div>
                   {error && <div className="alert alert-danger">{error}</div>}
                   <form onSubmit={handleSubmitDetails}>
-                    {/* --- User Details --- */}
+                    {/* ... form fields same as before ... */}
                     <div className="mb-3"><label className="form-label">I am a</label><div className="row"><div className="col-6"><div className="form-check"><input className="form-check-input" type="radio" name="userType" value="junior" id="juniorReg" checked={formData.userType === 'junior'} onChange={handleChange} /><label className="form-check-label" htmlFor="juniorReg">Junior Developer</label></div></div><div className="col-6"><div className="form-check"><input className="form-check-input" type="radio" name="userType" value="senior" id="seniorReg" checked={formData.userType === 'senior'} onChange={handleChange} /><label className="form-check-label" htmlFor="seniorReg">Senior Developer</label></div></div></div></div>
                     <div className="row mb-3"><div className="col-md-6"><label className="form-label">Full Name *</label><input type="text" className="form-control" name="name" value={formData.name} onChange={handleChange} required /></div><div className="col-md-6"><label className="form-label">Email Address *</label><input type="email" className="form-control" name="email" value={formData.email} onChange={handleChange} required /></div></div>
                     <div className="row mb-3"><div className="col-md-6"><label className="form-label">Password *</label><input type="password" className="form-control" name="password" value={formData.password} onChange={handleChange} required /></div><div className="col-md-6"><label className="form-label">Confirm Password *</label><input type="password" className="form-control" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} required /></div></div>
-                    {/* --- Professional Details --- */}
                     <div className="row mb-3"><div className="col-md-6"><label className="form-label">Projects Completed *</label><input type="number" className="form-control" name="projectsCompleted" value={formData.projectsCompleted} onChange={handleChange} required min="0"/><div className="form-text">Seniors need at least 6.</div></div><div className="col-md-6"><label className="form-label">GitHub URL</label><input type="url" className="form-control" name="githubUrl" value={formData.githubUrl} onChange={handleChange} placeholder="https://github.com/username"/></div></div>
                     <div className="mb-3"><label className="form-label">Skills</label><input type="text" className="form-control" name="skills" value={formData.skills} onChange={handleChange} placeholder="React, Node.js (comma-separated)" /></div>
                     <div className="mb-4"><label className="form-label">Experience</label><textarea className="form-control" name="experience" rows="3" value={formData.experience} onChange={handleChange} placeholder="Tell us about your experience..."></textarea></div>
-                    {/* --- File Uploads --- */}
                     <div className="row mb-4"><div className="col-md-6"><label className="form-label">Profile Picture (Optional)</label><input type="file" className="form-control" name="profilePicture" accept="image/jpeg, image/png" onChange={handleFileChange} /></div><div className="col-md-6"><label className="form-label">Resume (PDF) *</label><input type="file" className="form-control" name="resume" accept=".pdf" onChange={handleFileChange} required /></div></div>
                     <button type="submit" className="btn btn-primary w-100 mb-3" disabled={loading}>{loading ? 'Sending OTP...' : 'Continue'}</button>
                   </form>

@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../api'; // ✅ Import api
 
 const Profile = () => {
-  const { user, setUser } = useAuth(); // Make sure setUser is exported from your AuthContext
+  const { user, setUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   
-  // Initialize form state with user data
   const [formData, setFormData] = useState({
     name: user?.name || '',
     skills: user?.skills?.join(', ') || '',
@@ -16,6 +15,11 @@ const Profile = () => {
   });
   const [profilePictureFile, setProfilePictureFile] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // ✅ SERVER_URL Logic
+  const SERVER_URL = import.meta.env.VITE_API_URL 
+    ? import.meta.env.VITE_API_URL.replace('/api', '') 
+    : 'http://localhost:5000';
 
   if (!user) return <div className="text-center p-5">Loading profile...</div>;
 
@@ -31,7 +35,8 @@ const Profile = () => {
       data.append('profilePicture', profilePictureFile);
     }
     try {
-      const response = await axios.put('http://localhost:5000/api/auth/profile', data, {
+      // ✅ Use api instance
+      const response = await api.put('/auth/profile', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (setUser) setUser(response.data.user); 
@@ -43,8 +48,6 @@ const Profile = () => {
     }
     setLoading(false);
   };
-  
-  const serverUrl = 'http://localhost:5000';
 
   return (
     <div className="container mt-4 mb-5">
@@ -57,7 +60,8 @@ const Profile = () => {
                 <>
                   <div className="text-center mb-4">
                     {user.profilePicturePath ? (
-                      <img src={`${serverUrl}/${user.profilePicturePath.replace(/\\/g, '/')}`} alt="Profile" className="rounded-circle mx-auto mb-3" style={{ width: '120px', height: '120px', objectFit: 'cover' }} />
+                      // ✅ Use SERVER_URL
+                      <img src={`${SERVER_URL}/${user.profilePicturePath.replace(/\\/g, '/')}`} alt="Profile" className="rounded-circle mx-auto mb-3" style={{ width: '120px', height: '120px', objectFit: 'cover' }} />
                     ) : (
                       <div className="bg-primary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" style={{ width: '120px', height: '120px' }}><i className="bi bi-person-fill display-3 text-white"></i></div>
                     )}
@@ -73,7 +77,10 @@ const Profile = () => {
                     <div className="row text-center">
                       <div className="col-md-4"><h4 className="fw-bold text-primary">{user.projectsCompleted}</h4><p className="text-muted mb-0">Projects Done</p></div>
                       <div className="col-md-4"><a href={user.githubUrl || '#'} target="_blank" rel="noopener noreferrer" className="text-decoration-none"><h4 className="fw-bold text-dark"><i className="bi bi-github"></i></h4><p className="text-muted mb-0">GitHub</p></a></div>
-                      <div className="col-md-4"><a href={`${serverUrl}/${user.resumePath?.replace(/\\/g, '/')}`} target="_blank" rel="noopener noreferrer" className="text-decoration-none"><h4 className="fw-bold text-info"><i className="bi bi-file-earmark-person"></i></h4><p className="text-muted mb-0">Resume</p></a></div>
+                      <div className="col-md-4">
+                          {/* ✅ Use SERVER_URL for resume link */}
+                          <a href={`${SERVER_URL}/${user.resumePath?.replace(/\\/g, '/')}`} target="_blank" rel="noopener noreferrer" className="text-decoration-none"><h4 className="fw-bold text-info"><i className="bi bi-file-earmark-person"></i></h4><p className="text-muted mb-0">Resume</p></a>
+                      </div>
                     </div>
                   </div>
                   <div className="text-center mt-4 pt-3 border-top">

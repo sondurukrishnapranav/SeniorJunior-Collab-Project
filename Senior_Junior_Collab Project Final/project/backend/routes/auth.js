@@ -162,21 +162,22 @@ router.post('/verify-email', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   try {
-    const { email, password, userType } = req.body;
-    const user = await User.findOne({ email, userType });
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-   
     if (!user.isVerified) {
-      return res.status(403).json({ message: 'Your account is not verified. Please check your email or register again to receive a new code.' });
+      return res.status(403).json({ message: 'Your account is not verified. Please check your email.' });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.userType },
       process.env.JWT_SECRET,
@@ -188,6 +189,7 @@ router.post('/login', async (req, res) => {
       user: { id: user.id, name: user.name, email: user.email, userType: user.userType },
     });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
 });

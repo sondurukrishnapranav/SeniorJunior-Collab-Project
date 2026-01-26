@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../api'; // ✅ Import api
 
 const BrowseOpenings = () => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedProject, setSelectedProject] = useState(null);
   
-  // States for application modal
   const [applicationData, setApplicationData] = useState({ coverLetter: '', portfolioUrl: '' });
   const [resumeFile, setResumeFile] = useState(null);
   
-  // ✨ NEW: States for filtering
   const [allSkills, setAllSkills] = useState([]);
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [filteredProjects, setFilteredProjects] = useState([]);
@@ -22,10 +20,9 @@ const BrowseOpenings = () => {
     fetchProjects();
   }, []);
   
-  // ✨ NEW: Effect to filter projects whenever the main list or selected skill changes
   useEffect(() => {
     if (!selectedSkill) {
-      setFilteredProjects(projects); // If no skill is selected, show all projects
+      setFilteredProjects(projects); 
     } else {
       const filtered = projects.filter(project => 
         project.requiredSkills.includes(selectedSkill)
@@ -37,11 +34,13 @@ const BrowseOpenings = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/projects');
+      // ✅ Browse Openings usually fetches ALL open projects, typically /projects (public)
+      // If your backend route is /projects/my-projects, keep it, but standard is /projects
+      // Assuming public route is just /projects based on your backend code provided earlier
+      const response = await api.get('/projects'); 
       const fetchedProjects = response.data;
       setProjects(fetchedProjects);
       
-      // ✨ NEW: Dynamically generate the list of unique skills for the filter bar
       const skills = new Set(fetchedProjects.flatMap(p => p.requiredSkills));
       setAllSkills(['All Projects', ...skills]);
 
@@ -63,7 +62,8 @@ const BrowseOpenings = () => {
     formData.append('resume', resumeFile);
 
     try {
-      await axios.post('http://localhost:5000/api/applications', formData, {
+      // ✅ Use api instance
+      await api.post('/applications', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       alert('Application submitted successfully!');
@@ -102,7 +102,7 @@ const BrowseOpenings = () => {
   return (
     <div className="container-fluid mt-4">
       <div className="row">
-        {/* --- ✨ NEW: Filter Sidebar --- */}
+        {/* --- Filter Sidebar --- */}
         <aside className="col-lg-2 col-md-3">
           <div className="sticky-top" style={{ top: '6rem' }}>
             <h5 className="fw-bold mb-3">Filter by Domain</h5>
@@ -148,7 +148,6 @@ const BrowseOpenings = () => {
                           <span className={`badge bg-${getDifficultyBadge(project.difficulty)}`}>{project.difficulty}</span>
                         </div>
                         
-                        {/* ✨ NEW: Posted On and Duration details */}
                         <div className="d-flex justify-content-between text-muted small mb-3">
                             <span><i className="bi bi-calendar-check me-1"></i>Posted: {new Date(project.createdAt).toLocaleDateString()}</span>
                             <span><i className="bi bi-clock me-1"></i>Duration: {project.duration}</span>
@@ -189,7 +188,7 @@ const BrowseOpenings = () => {
         </main>
       </div>
 
-      {/* --- Application Modal (No changes here) --- */}
+      {/* --- Application Modal --- */}
       <div className="modal fade" id="applicationModal" tabIndex="-1">
         <div className="modal-dialog modal-lg">
           <div className="modal-content">

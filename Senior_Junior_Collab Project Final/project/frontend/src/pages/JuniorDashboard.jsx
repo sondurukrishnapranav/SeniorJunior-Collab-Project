@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../api'; // ✅ Import api
 
 const JuniorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -10,15 +10,21 @@ const JuniorDashboard = () => {
   const { user } = useAuth();
   const [viewingApplication, setViewingApplication] = useState(null);
 
+  // ✅ SERVER_URL Logic: Detects if using localhost or production URL
+  const SERVER_URL = import.meta.env.VITE_API_URL 
+    ? import.meta.env.VITE_API_URL.replace('/api', '') 
+    : 'http://localhost:5000';
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
     try {
+      // ✅ Use api instance
       const [applicationsRes, projectsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/applications/my-applications'),
-        axios.get('http://localhost:5000/api/projects/junior-projects')
+        api.get('/applications/my-applications'),
+        api.get('/projects/junior-projects')
       ]);
       setApplications(applicationsRes.data);
       setProjects(projectsRes.data);
@@ -31,7 +37,8 @@ const JuniorDashboard = () => {
   const handleWithdraw = async (applicationId) => {
     if (!window.confirm('Are you sure you want to withdraw this application?')) return;
     try {
-        await axios.delete(`http://localhost:5000/api/applications/${applicationId}`);
+        // ✅ Use api instance
+        await api.delete(`/applications/${applicationId}`);
         setApplications(applications.filter(app => app._id !== applicationId));
         alert('Application withdrawn successfully.');
     } catch (error) {
