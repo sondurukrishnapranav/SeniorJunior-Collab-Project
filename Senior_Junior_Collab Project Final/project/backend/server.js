@@ -19,6 +19,9 @@ app.use('/uploads', express.static('uploads'));
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/applications', applicationRoutes);
+app.get('/', (req, res) => {
+  res.status(200).send('Senior Junior Collab backend is live');
+});
 
 // Connect to MongoDB
 const connectDB = async () => {
