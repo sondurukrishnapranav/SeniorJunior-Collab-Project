@@ -6,9 +6,24 @@ const { authenticateToken } = require('../middleware/auth');
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const router = express.Router();
-const upload = require('../middleware/upload');
+// Ensure this path points to the new robust upload.js we created
+const upload = require('../middleware/upload'); 
 const fs = require('fs');
 const path = require('path');
+
+// ✅ FIXED: Robust Email Transporter for Render (Port 465 SSL)
+const transporter = nodemailer.createTransport({
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // true for 465, false for other ports
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+  tls: {
+    rejectUnauthorized: false // Helps prevent some cloud SSL errors
+  }
+});
 
 router.post(
   '/register',
@@ -31,7 +46,6 @@ router.post(
 
       const hashedPassword = await bcrypt.hash(password, 10);
       
-      
       const userData = {
         name,
         email,
@@ -41,6 +55,7 @@ router.post(
         experience,
         projectsCompleted,
         githubUrl,
+        // Optional chaining handles if files are not uploaded
         resumePath: req.files?.resume?.[0]?.path,
         profilePicturePath: req.files?.profilePicture?.[0]?.path,
       };
@@ -52,26 +67,60 @@ router.post(
         await user.save();
       }
       
-      
       const otp = crypto.randomInt(100000, 999999).toString();
       user.verificationOTP = otp;
       user.verificationExpires = Date.now() + 300000;
       await user.save();
       
-      
-      const transporter = nodemailer.createTransport({ service: 'gmail', auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS } });
+      // ✅ FIXED: Use the new robust transporter
       await transporter.sendMail({
-        from: `"Senior-Junior Collab" <${process.env.EMAIL_USER}>`, to: user.email, subject: 'Verify Your Email Address',
+        from: `"Senior-Junior Collab" <${process.env.EMAIL_USER}>`, 
+        to: user.email, 
+        subject: 'Verify Your Email Address',
         text: `Your verification code is: ${otp}. It will expire in 5 minutes.`
       });
 
       res.status(201).json({ message: 'Registration successful! Please check your email for a verification code.' });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Server error' });
+      console.error("Registration Error:", error);
+      res.status(500).json({ message: 'Server error during registration' });
     }
   }
 );
+
+// ✅ ADDED: Missing Resend OTP Route
+router.post('/resend-otp', async (req, res) => {
+    try {
+      const { email } = req.body;
+      const user = await User.findOne({ email });
+  
+      if (!user) {
+        return res.status(404).json({ message: 'User not found.' });
+      }
+  
+      if (user.isVerified) {
+        return res.status(400).json({ message: 'Email is already verified.' });
+      }
+  
+      const otp = crypto.randomInt(100000, 999999).toString();
+      user.verificationOTP = otp;
+      user.verificationExpires = Date.now() + 300000;
+      await user.save();
+  
+      await transporter.sendMail({
+        from: `"Senior-Junior Collab" <${process.env.EMAIL_USER}>`,
+        to: user.email,
+        subject: 'New Verification Code',
+        text: `Your new verification code is: ${otp}. It will expire in 5 minutes.`
+      });
+  
+      res.status(200).json({ message: 'New OTP sent successfully.' });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: 'Server error' });
+    }
+});
+
 router.put(
   '/profile',
   authenticateToken,
@@ -85,20 +134,22 @@ router.put(
         return res.status(404).json({ message: 'User not found.' });
       }
 
-      
       user.name = name || user.name;
       user.skills = skills ? skills.split(',').map(s => s.trim()) : user.skills;
       user.experience = experience || user.experience;
       user.projectsCompleted = projectsCompleted || user.projectsCompleted;
       user.githubUrl = githubUrl || user.githubUrl;
 
-      
       if (req.file) {
-        
         if (user.profilePicturePath) {
-          fs.unlink(path.join(__dirname, '..', user.profilePicturePath), err => {
-            if (err) console.error("Error deleting old avatar:", err);
-          });
+          // Use path.resolve to ensure we find the right file to delete
+          // Note: On Render's ephemeral storage, deletion errors aren't critical
+          const oldPath = path.resolve(user.profilePicturePath);
+          if(fs.existsSync(oldPath)) {
+             fs.unlink(oldPath, err => {
+                if (err) console.error("Error deleting old avatar:", err);
+             });
+          }
         }
         user.profilePicturePath = req.file.path;
       }
@@ -136,7 +187,6 @@ router.post('/verify-email', async (req, res) => {
     user.verificationExpires = undefined;
     await user.save();
     
-  
     const token = jwt.sign(
       { userId: user.id, email: user.email, userType: user.userType },
       process.env.JWT_SECRET,
@@ -205,6 +255,7 @@ router.get('/profile', authenticateToken, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
@@ -217,15 +268,7 @@ router.post('/forgot-password', async (req, res) => {
     user.passwordResetExpires = Date.now() + 300000; 
     await user.save();
 
-    
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
+    // ✅ FIXED: Use the new robust transporter
     await transporter.sendMail({
       from: `"Senior-Junior Collab" <${process.env.EMAIL_USER}>`,
       to: user.email,
@@ -241,13 +284,10 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-
-
 router.post('/reset-password', async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     
-   
     const user = await User.findOne({
       email,
       passwordResetOTP: otp,
@@ -258,7 +298,6 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ message: 'Invalid or expired OTP. Please try again.' });
     }
 
-    
     user.password = await bcrypt.hash(newPassword, 10);
  
     user.passwordResetOTP = undefined;
@@ -271,7 +310,5 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-
 
 module.exports = router;
